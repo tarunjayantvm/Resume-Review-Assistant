@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resume Review Assistant</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">AI-powered resume optimization</p>
+          <h1>Resume Review Assistant</h1>
+          <p class="subtext">
+            Review formatting, grammar, ATS readiness, and tailor your resume to the target role.
+          </p>
+        </div>
+      </header>
+
+      <main class="grid">
+        <section class="panel form-panel">
+          <h2>Upload & analyze</h2>
+          <form id="analyze-form" enctype="multipart/form-data">
+            <label class="field">
+              <span>Resume PDF or text</span>
+              <input id="resume-file" name="resume" type="file" accept=".pdf,.txt" required />
+            </label>
+
+            <label class="field">
+              <span>Target role</span>
+              <input id="job-role" name="job_role" type="text" placeholder="Software Engineer, Data Analyst..." required />
+            </label>
+
+            <label class="field">
+              <span>Company (optional)</span>
+              <input id="company" name="company" type="text" placeholder="Google, Amazon..." />
+            </label>
+
+            <button type="submit">Analyze Resume</button>
+          </form>
+
+          <div id="loading" class="loading hidden">Reviewing your resume…</div>
+          <div id="analysis-result" class="result-area hidden"></div>
+        </section>
+
+        <section class="panel chat-panel">
+          <h2>Ask follow-ups</h2>
+          <div id="chat-log" class="chat-log"></div>
+          <form id="chat-form" class="chat-form">
+            <input id="chat-input" type="text" placeholder="Ask: How do I improve my summary?" required />
+            <button type="submit">Send</button>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

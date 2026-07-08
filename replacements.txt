@@ -1,0 +1,4 @@
+#  <LEAKED_SECRET>==>REDACTED
+# (replace <LEAKED_SECRET> with the exact key string you committed)
+# Example content of replacements.txt:
+# sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx==>REDACTED
