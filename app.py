@@ -58,7 +58,91 @@ COMMON_SKILLS = {
     "testing",
     "automation",
     "jira",
-    "agile",
+    "stripe",
+    "sql server",
+    "c#",
+    "c++",
+    "linux",
+    "gitlab",
+    "github",
+    "jira",
+    "selenium",
+    "jenkins",
+    "terraform",
+    "ansible",
+    "helm",
+    "docker-compose",
+    "ci/cd",
+}
+
+TECH_PHRASES = {
+    "machine learning",
+    "deep learning",
+    "data analysis",
+    "data engineering",
+    "natural language processing",
+    "cloud computing",
+    "rest api",
+    "graphql api",
+    "continuous integration",
+    "continuous deployment",
+    "unit testing",
+    "integration testing",
+    "performance testing",
+    "automation testing",
+    "containerization",
+    "infrastructure as code",
+    "distributed systems",
+    "serverless",
+    "frontend",
+    "backend",
+    "full stack",
+    "full-stack",
+}
+
+TECH_HINTS = {
+    "api",
+    "aws",
+    "azure",
+    "docker",
+    "kubernetes",
+    "git",
+    "linux",
+    "sql",
+    "react",
+    "node",
+    "python",
+    "java",
+    "javascript",
+    "typescript",
+    "c++",
+    "c#",
+    "stripe",
+    "graphql",
+    "mongodb",
+    "postgresql",
+    "mysql",
+    "spark",
+    "hadoop",
+    "tensorflow",
+    "pytorch",
+    "flask",
+    "django",
+    "fastapi",
+    "pytest",
+    "rest",
+    "cloud",
+    "devops",
+    "microservices",
+    "ci/cd",
+    "terraform",
+    "ansible",
+    "helm",
+    "docker-compose",
+    "selenium",
+    "jira",
+    "powerbi",
+    "tableau",
 }
 
 
@@ -101,44 +185,93 @@ def extract_keywords(job_role: str):
     return sorted(set(focused))[:12]
 
 
-def extract_keywords_from_jd(job_role: str, jd_text: str) -> list[str]:
-    text = f"{job_role or ''} {jd_text or ''}"
-    raw_tokens = re.findall(r"[a-zA-Z0-9+#.]+", text.lower())
-    # normalize tokens and remove punctuation tails
-    tokens = [t.strip('.,:;()[]') for t in raw_tokens if len(t.strip('.,:;()[]')) > 2]
+def normalize_skill_token(token: str) -> str:
+    token = token.lower().strip()
+    aliases = {
+        "js": "javascript",
+        "py": "python",
+        "nodejs": "node",
+        "reactjs": "react",
+        "awscloud": "aws",
+        "azurecloud": "azure",
+        "gcp": "google cloud",
+        "css3": "css",
+        "html5": "html",
+        "dockercompose": "docker-compose",
+        "k8s": "kubernetes",
+        "ci/cd": "ci/cd",
+        "restapi": "rest api",
+        "graphqlapi": "graphql api",
+    }
+    return aliases.get(token, token)
 
-    # non-technical or generic words to exclude
+
+def contains_exact_keyword(text: str, keyword: str) -> bool:
+    return bool(re.search(rf"\b{re.escape(keyword)}\b", text))
+
+
+def is_technical_token(token: str) -> bool:
+    if token in COMMON_SKILLS or token in TECH_PHRASES or token in TECH_HINTS:
+        return True
+    for hint in TECH_HINTS:
+        if token == hint:
+            return True
+        if token.startswith(hint) or token.endswith(hint):
+            if len(token) <= len(hint) + 8:
+                return True
+    return False
+
+
+def extract_keywords_from_jd(job_role: str, jd_text: str) -> list[str]:
+    text = f"{job_role or ''} {jd_text or ''}".lower()
+    normalized = re.sub(r"[\r\n]+", " ", text)
+    raw_tokens = re.findall(r"[a-zA-Z0-9+#./-]+", normalized)
+    tokens = [normalize_skill_token(t.strip('.,:;()[]')) for t in raw_tokens if len(t.strip('.,:;()[]')) > 2]
+
     NON_TECH_WORDS = {
         "and", "the", "with", "for", "that", "this", "from", "have", "has", "will", "be",
-        "using", "including", "able", "work", "team", "role", "skills", "experience", "responsibilities",
-        "requirements", "job", "title", "entry", "level", "location", "hybrid", "remote", "onsite",
-        "fulltime", "parttime", "years", "year", "yrs", "candidate", "candidates", "apply", "salary",
+        "using", "including", "able", "work", "team", "role", "roles", "skills", "skill", "experience",
+        "experiences", "responsibilities", "requirements", "requirement", "job", "jobs", "title", "entry",
+        "level", "location", "hybrid", "remote", "onsite", "fulltime", "parttime", "years", "year", "yrs",
+        "candidate", "candidates", "apply", "salary", "interview", "internship", "intern", "company", "companies",
+        "clients", "client", "projects", "project", "manager", "managers", "lead", "leads", "business",
+        "analysis", "analyst", "team", "teams", "office", "workplace", "training", "education", "degree",
         "bengaluru", "bangalore", "hyderabad", "mumbai", "delhi", "chennai", "pune", "noida", "gurgaon",
+        "must", "should", "good", "strong", "excellent", "easy", "comfortable", "understanding",
     }
-
     tokens = [t for t in tokens if t not in NON_TECH_WORDS and not t.isdigit()]
 
-    freq: dict = {}
+    freq: dict[str, int] = {}
     for t in tokens:
         freq[t] = freq.get(t, 0) + 1
 
-    # Prioritize known common skills first (keep order stable)
-    common = [s for s in COMMON_SKILLS if s in text.lower()]
-    # then take most frequent tokens
-    sorted_tokens = sorted(freq.items(), key=lambda x: x[1], reverse=True)
     keywords: list[str] = []
-    for s in common:
-        if s not in keywords:
-            keywords.append(s)
-    for t, _ in sorted_tokens:
-        # skip generic punctuation-only or very short tokens
-        if len(t) <= 2:
+    seen: set[str] = set()
+
+    for phrase in TECH_PHRASES:
+        if contains_exact_keyword(normalized, phrase) and phrase not in seen:
+            keywords.append(phrase)
+            seen.add(phrase)
+
+    for skill in COMMON_SKILLS:
+        if contains_exact_keyword(normalized, skill) and skill not in seen:
+            keywords.append(skill)
+            seen.add(skill)
+
+    for token, _ in sorted(freq.items(), key=lambda item: (-item[1], item[0])):
+        if token in seen or token in NON_TECH_WORDS:
             continue
-        if t not in keywords:
-            keywords.append(t)
+        if token in COMMON_SKILLS or token in TECH_PHRASES:
+            keywords.append(token)
+            seen.add(token)
+            continue
+        if is_technical_token(token):
+            keywords.append(token)
+            seen.add(token)
         if len(keywords) >= 30:
             break
-    return keywords
+
+    return keywords[:30]
 
 
 def score_formatting(text: str) -> dict[str, Any]:
@@ -198,27 +331,21 @@ def score_grammar(text: str) -> dict[str, Any]:
 
 
 def calculate_ats_score(resume_text: str, job_role: str, jd_text: str | None = None) -> dict[str, Any]:
-    # Build keywords from JD + role
     keywords = extract_keywords_from_jd(job_role or "", jd_text or "")
-    resume_lower = resume_text.lower()
-    # match exact tokens
-    matched = [kw for kw in keywords if kw in resume_lower]
+    normalized_resume = normalize_text(resume_text.lower())
+
+    matched = [kw for kw in keywords if contains_exact_keyword(normalized_resume, kw)]
     keyword_coverage = round((len(matched) / max(1, len(keywords))) * 100, 1) if keywords else 0.0
 
-    # simple density: how many unique keywords divided by total word tokens
-    resume_tokens = set(tokenize(resume_text))
-    matched_tokens = [k for k in keywords if k in resume_tokens]
+    resume_tokens = set(tokenize(normalized_resume))
+    matched_tokens = [k for k in keywords if all(tok in resume_tokens for tok in k.split())]
     keyword_density = round((len(matched_tokens) / max(1, len(keywords))) * 100, 1) if keywords else 0.0
 
-    # baseline scoring factors
     score = 30
-    # structure presence
-    if re.search(r"\b(summary|skills|experience|education)\b", resume_lower):
+    if re.search(r"\b(summary|skills|experience|education)\b", normalized_resume):
         score += 15
-    # length
-    if len(re.findall(r"\b[a-z]{3,}\b", resume_lower)) > 200:
+    if len(re.findall(r"\b[a-z]{3,}\b", normalized_resume)) > 200:
         score += 10
-    # coverage from JD
     score += min(40, int(keyword_coverage * 0.4))
     score = min(100, score)
 
@@ -258,19 +385,98 @@ def build_analysis(resume_text: str, job_role: str, jd_text: str | None = None) 
     formatting = score_formatting(resume_text)
     grammar = score_grammar(resume_text)
     ats = calculate_ats_score(resume_text, job_role, jd_text)
-    # keywords suggested by JD + role
     keywords = extract_keywords_from_jd(job_role or "", jd_text or "")
-    skills = sorted([s for s in COMMON_SKILLS if s in resume_text.lower()])[:10]
-    missing_skills = [k for k in keywords if k.lower() not in resume_text.lower() and k.lower() not in {s.lower() for s in skills}]
+    normalized_resume = normalize_text(resume_text.lower())
+
+    skills = sorted([s for s in COMMON_SKILLS if contains_exact_keyword(normalized_resume, s)])[:10]
+    missing_skills = [k for k in keywords if not contains_exact_keyword(normalized_resume, k)]
+    matched_keywords = [k for k in keywords if contains_exact_keyword(normalized_resume, k)]
 
     suggestions = list(formatting["suggestions"])
-    if keywords:
-        suggestions.append("Add more keywords from the JD/target role such as " + ", ".join(keywords[:8]))
-    suggestions.append("Quantify impact with numbers, percentages, and business outcomes.")
+    if missing_skills:
+        if matched_keywords:
+            suggestions.append(
+                "Your resume includes "
+                + ", ".join(matched_keywords[:5])
+                + ", but it still misses these JD terms: "
+                + ", ".join(missing_skills[:6])
+                + "."
+            )
+        else:
+            suggestions.append(
+                "Your resume does not yet mention the JD's required tools and platforms. Add the missing technical skills exactly as they appear in the job description."
+            )
+        suggestions.append(
+            "Place missing keywords in a dedicated skills section and reflect them in specific experience bullets."
+        )
+        if len(missing_skills) > 5:
+            suggestions.append(
+                "Start with the highest-priority missing skills, then add the rest with one concrete achievement bullet each."
+            )
+    elif keywords:
+        suggestions.append(
+            "Your resume already includes the main technical keywords from the JD. Strengthen it by making each bullet show the technology, the task, and the outcome."
+        )
+
     if jd_text and jd_text.strip():
-        suggestions.append("Tailor the summary, skills, and bullet points to match the uploaded JD.")
+        if ats["keyword_coverage"] < 70:
+            suggestions.append(
+                "Keyword coverage is low for this JD. Focus on the exact technologies and platforms the job description names rather than generic words."
+            )
+            if job_role:
+                suggestions.append(
+                    f"Match the JD to the target role '{job_role}' by using phrases such as {', '.join(keywords[:5])} where appropriate."
+                )
+        else:
+            suggestions.append(
+                "Keyword alignment is good. Improve by tying those keywords to real achievements, metrics, and business value."
+            )
     else:
-        suggestions.append("Tailor the summary, skills, and bullet points to the target role.")
+        suggestions.append(
+            "If you do not have a JD, use the target role to guide keyword selection and keep the list purely technical."
+        )
+
+    if not re.search(r"\b(skills|technical skills|core skills)\b", normalized_resume):
+        suggestions.append(
+            "Add a dedicated technical skills section listing languages, frameworks, systems, and tools used on the target role."
+        )
+    else:
+        suggestions.append(
+            "Ensure the skills section only contains technical items and not soft skills, roles, or generic phrases."
+        )
+
+    if not re.search(r"\b(summary|professional summary|about)\b", normalized_resume):
+        suggestions.append(
+            "Add a concise technical summary at the top that highlights your most relevant tools, platforms, and achievements."
+        )
+    else:
+        suggestions.append(
+            "Refine your summary to mention the most relevant technical strengths and top achievements that match the JD."
+        )
+
+    if missing_skills:
+        suggestions.append(
+            "For each missing keyword, include one bullet that shows context: what you built, the technology used, and the result or impact."
+        )
+    else:
+        suggestions.append(
+            "Strengthen existing bullets with specific metrics such as performance improvements, delivery times, or adoption rates."
+        )
+
+    if any(contains_exact_keyword(normalized_resume, term) for term in ["internship", "intern"]):
+        suggestions.append(
+            "Keep the keyword list focused on technical skills; remove or de-emphasize non-technical internship and company terms from the skill mapping."
+        )
+
+    suggestions.append(
+        "Use numbers, percentages, and business outcomes to describe your contributions and technical impact."
+    )
+
+    # Deduplicate suggestions while preserving order
+    final_suggestions: list[str] = []
+    for suggestion in suggestions:
+        if suggestion not in final_suggestions:
+            final_suggestions.append(suggestion)
 
     return {
         "ats": ats,
@@ -279,7 +485,7 @@ def build_analysis(resume_text: str, job_role: str, jd_text: str | None = None) 
         "keywords": keywords,
         "skills": skills,
         "missing_skills": missing_skills[:12],
-        "suggestions": suggestions[:10],
+        "suggestions": final_suggestions[:10],
         "professional_summary": generate_summary(resume_text, job_role),
         "achievement_bullets": generate_bullets(resume_text, job_role),
     }
